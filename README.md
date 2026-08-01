@@ -4,7 +4,7 @@ Math-aware text-to-speech that runs **entirely in your browser**. Paste text —
 including math notation — and hear it read aloud. No backend, no API keys, no
 cost, no data leaving your machine.
 
-Speech comes from [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) via
+Speech comes from [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) viaV
 [kokoro-js](https://github.com/hexgrad/kokoro), running on WebGPU when available
 and WASM otherwise.
 
@@ -32,13 +32,6 @@ npm run build     # static output in dist/
 npm run preview   # serve the built output
 npm test          # math-normalizer tests
 ```
-
-## Deploying
-
-`.github/workflows/deploy.yml` builds and publishes `dist/` to GitHub Pages on
-every push to `main`. Enable it once per repo: **Settings → Pages → Source →
-GitHub Actions**. `vite.config.js` uses a relative `base`, so the site works at
-any Pages path without hardcoding the repository name.
 
 ## Known limitations
 
