@@ -1,13 +1,7 @@
 /**
  * Sequential playback of streamed audio chunks through a single <audio>.
- *
- * The obvious alternative — decoding chunks into AudioBuffers and scheduling
- * them via Web Audio — would give gapless playback, but it also means building
- * our own transport, and `playbackRate` on an <audio> element is the thing that
- * makes the speed slider instant. Keeping one <audio> and swapping its `src`
- * preserves that, plus the native controls and keyboard handling, at the cost of
- * a small seam between chunks. Since chunks split on sentence boundaries, the
- * seam lands where a reader would pause anyway.
+ * Swapping `src` on one element (instead of scheduling AudioBuffers via Web Audio)
+ * keeps `playbackRate` working, at the cost of a small seam between chunks.
  */
 
 /**
@@ -44,9 +38,7 @@ export function createPlayerQueue(player, { onStart, onDrain, onError } = {}) {
         onStart?.()
       }
     } catch (error) {
-      // Autoplay policies reject play() when there was no user gesture. The
-      // gesture here is the Speak click, so this is rare — but a rejected
-      // promise must not silently stall the whole queue.
+      // play() can reject under autoplay policy if there was no user gesture
       playing = false
       onError?.(error)
     }

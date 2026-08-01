@@ -4,7 +4,7 @@ Math-aware text-to-speech that runs **entirely in your browser**. Paste text —
 including math notation — and hear it read aloud. No backend, no API keys, no
 cost, no data leaving your machine.
 
-Speech comes from [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) viaV
+Speech comes from [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) via
 [kokoro-js](https://github.com/hexgrad/kokoro), running on WebGPU when available
 and WASM otherwise.
 

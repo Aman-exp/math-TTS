@@ -1,16 +1,12 @@
 /**
- * Phase 1 corpus: LaTeX-delimited math.
- *
- * Add a case here whenever a reading is wrong — this file is the record of what
- * "correct" means for this project, and it is meant to grow indefinitely.
+ * LaTeX-delimited math test corpus.
  *
  * `expected` is matched exactly. Where a construct has several defensible
- * readings, the one written here is the one we chose; changing it is a real
- * decision, not a test fix.
+ * readings, changing the expected value is a real decision, not a test fix.
  */
 
 export const LATEX_CASES = [
-  // --- the canonical case from BUILD.md -----------------------------------
+  // --- canonical example ---------------------------------------------------
   {
     name: 'dispersion-index integral (the canonical example)',
     input: '$\\int_0^\\infty \\phi(u) du$',

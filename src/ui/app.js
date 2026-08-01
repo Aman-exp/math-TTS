@@ -1,10 +1,4 @@
-/**
- * Wires the page together: textarea -> (normalize, Phase 1+) -> speak -> player.
- *
- * Phase 0 has no math normalization on purpose — BUILD.md says get this loop
- * working end to end first. The single call site marked below is where the
- * normalizer drops in, so adding it should not touch anything else in this file.
- */
+// Wires the page together: textarea -> normalize -> speak -> player.
 
 import { speak, speakStream, STREAM_THRESHOLD, DEFAULT_VOICE } from '../tts/speak.js'
 import { loadTTS, listVoices } from '../tts/kokoro-loader.js'
@@ -36,15 +30,7 @@ const VISITED_KEY = 'mathspeak:visited'
 const VOICE_KEY = 'mathspeak:voice'
 const SPEED_KEY = 'mathspeak:speed'
 
-/**
- * Warn a first-time visitor that the model download is coming.
- *
- * Keyed off localStorage rather than a session flag: the point is to warn
- * about a one-time cost, so it must stay gone across future sessions too, not
- * just for the rest of this tab's life. Dismissing early (before the model
- * finishes loading) still counts as "seen" — nagging a second time on the same
- * visit would be more annoying than informative.
- */
+// localStorage rather than a session flag, so the warning stays gone across future visits too.
 function initFirstVisitBanner() {
   if (localStorage.getItem(VISITED_KEY)) return
 
@@ -57,13 +43,7 @@ function markVisited() {
   els.firstVisitBanner.hidden = true
 }
 
-/**
- * Show what the normalizer produced.
- *
- * Worth the screen space: when a reading is wrong, the only useful question is
- * whether the normalizer or the voice got it wrong, and this answers that
- * without opening the console.
- */
+// Shows what the normalizer produced, so a bad reading can be traced to normalizer vs voice.
 function showPreview(text) {
   els.previewText.textContent = text
   els.preview.hidden = false
@@ -76,8 +56,7 @@ const speed = initSpeedControl({
   resetButton: els.speedReset,
 })
 
-// Restore the previous session's pace. Someone who prefers 1.5x wants 1.5x every
-// time, not to re-drag the slider on every visit.
+// Restore the previous session's speed.
 const savedSpeed = Number(localStorage.getItem(SPEED_KEY))
 if (savedSpeed >= 0.5 && savedSpeed <= 2) speed.set(savedSpeed)
 els.slider.addEventListener('change', () => {
@@ -112,11 +91,8 @@ function setProgress(fraction) {
   els.progressBar.style.width = `${Math.round(fraction * 100)}%`
 }
 
-/**
- * Model download progress. Transformers.js reports per-file, so we track the
- * worst-case (least complete) file to avoid a bar that jumps backwards as each
- * new file starts at 0%.
- */
+// Transformers.js reports progress per-file; track the least-complete file so the
+// bar doesn't jump backwards when a new file starts at 0%.
 const fileProgress = new Map()
 function onProgress(info) {
   if (info.status === 'progress' && info.file) {
@@ -144,7 +120,7 @@ async function populateVoices() {
       option.textContent = bits ? `${v.name} (${bits})` : v.name
       els.voice.append(option)
     }
-    // Restore the saved voice, but only if it still exists in this model build.
+    // only restore the saved voice if it still exists in this model build
     const savedVoice = localStorage.getItem(VOICE_KEY)
     const available = new Set([...els.voice.options].map((option) => option.value))
     els.voice.value = savedVoice && available.has(savedVoice) ? savedVoice : DEFAULT_VOICE
@@ -152,7 +128,7 @@ async function populateVoices() {
     els.voice.addEventListener('change', () => {
       localStorage.setItem(VOICE_KEY, els.voice.value)
     })
-    markVisited() // model is cached now — the one-time-cost warning no longer applies
+    markVisited() // model is cached now, warning no longer applies
 
     setStatus(
       `Ready — running on ${device.toUpperCase()} (${dtype}). ${
@@ -218,8 +194,7 @@ async function singleSynthesis(text, voice, started) {
   setProgress(null)
 
   els.player.src = url
-  // Re-assert the slider's rate: assigning src resets playbackRate in some
-  // browsers, and 'loadedmetadata' may not have fired yet.
+  // assigning src can reset playbackRate before 'loadedmetadata' fires
   speed.apply()
   await els.player.play()
 
@@ -228,13 +203,7 @@ async function singleSynthesis(text, voice, started) {
   setStatus(`Playing — synthesized in ${seconds}s on ${device.toUpperCase()}.`)
 }
 
-/**
- * Long text: play chunk 1 while chunk 2 is still being generated.
- *
- * Time-to-first-audio stops depending on document length, which is the whole
- * point — on the WASM path a long paste can otherwise take tens of seconds
- * before any sound, and silence that long reads as a hang.
- */
+/** Long text: play chunk 1 while chunk 2 is still generating. */
 async function streamSynthesis(text, voice, started) {
   streamAbort?.abort()
   streamAbort = new AbortController()
@@ -257,8 +226,6 @@ async function streamSynthesis(text, voice, started) {
     }
   }
 
-  // Tell the queue no more chunks are coming, so it can report "Done." when the
-  // last one finishes rather than stalling with the Stop button enabled.
   if (!signal.aborted) queue.finish()
 }
 
@@ -274,8 +241,7 @@ function onStop() {
 els.speakButton.addEventListener('click', onSpeak)
 els.stopButton.addEventListener('click', onStop)
 
-// Single-clip playback reports its own completion; the queue handles the
-// streaming case via onDrain.
+// single-clip completion; streaming completion goes through queue's onDrain
 els.player.addEventListener('ended', () => {
   if (!queue.isPlaying) {
     els.stopButton.disabled = true
@@ -283,16 +249,13 @@ els.player.addEventListener('ended', () => {
   }
 })
 
-// Normalization is pure string work — cheap enough to run on every keystroke,
-// so the preview stays live without debouncing.
+// cheap enough to run on every keystroke without debouncing
 els.input.addEventListener('input', () => {
   const text = normalize(els.input.value)
   if (text) showPreview(text)
   else els.preview.hidden = true
 })
 
-// Ctrl/Cmd+Enter from the textarea is the fastest path for someone pasting and
-// immediately wanting to hear it.
 els.input.addEventListener('keydown', (event) => {
   if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
     event.preventDefault()
@@ -302,5 +265,5 @@ els.input.addEventListener('keydown', (event) => {
 
 initFirstVisitBanner()
 
-// Warm the model at page load so the first "Speak" is not also the first download.
+// warm the model at page load so the first "Speak" isn't also the first download
 populateVoices()

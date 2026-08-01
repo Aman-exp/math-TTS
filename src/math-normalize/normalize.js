@@ -1,9 +1,8 @@
 /**
  * Orchestration: raw pasted text -> speakable English.
  *
- * detect -> route each segment -> merge back into one string. This is the only
- * module the UI should import; everything else is an implementation detail of a
- * single phase, so Phase 2 can be added without touching the call site.
+ * detect -> route each segment -> merge back into one string. This is the
+ * only module the UI should import.
  */
 
 import { detectSegments } from './detect.js'
@@ -13,8 +12,8 @@ import { normalizeUnicodeMath } from './unicode-math-rules.js'
 /**
  * @param {string} input Raw text as pasted by the user.
  * @param {object} [options]
- * @param {boolean} [options.unicodeMath=true] Handle loose Unicode math in the
- *   prose runs (Phase 2). Turn it off to get strict LaTeX-only behaviour.
+ * @param {boolean} [options.unicodeMath=true] Handle loose Unicode math in
+ *   prose runs. Turn off for strict LaTeX-only behaviour.
  * @returns {string} Text ready to hand to the TTS engine.
  */
 export function normalize(input, { unicodeMath = true } = {}) {
@@ -24,8 +23,8 @@ export function normalize(input, { unicodeMath = true } = {}) {
   const rendered = segments.map((segment) => {
     if (segment.type === 'math') {
       const speech = latexToSpeech(segment.content)
-      // A math span that renders to nothing (e.g. "$ $") would otherwise leave
-      // a doubled space and a dangling comma in the prose.
+      // A math span that renders to nothing (e.g. "$ $") would otherwise
+      // leave a doubled space and a dangling comma in the prose.
       if (!speech) return { text: '', display: segment.display }
       return { text: speech, display: segment.display }
     }
@@ -36,10 +35,8 @@ export function normalize(input, { unicodeMath = true } = {}) {
 }
 
 /**
- * Prose runs get loose-Unicode math treatment (Phase 2).
- *
- * Only the segments *outside* LaTeX delimiters reach this, so explicitly
- * delimited math is never processed twice.
+ * Prose runs get loose-Unicode math treatment. Only segments outside LaTeX
+ * delimiters reach this, so delimited math is never processed twice.
  */
 function normalizeProse(text) {
   return normalizeUnicodeMath(text)
@@ -47,9 +44,7 @@ function normalizeProse(text) {
 
 /**
  * Stitch segments back together with the pauses a reader would use.
- *
- * Inline math gets spaces; display math gets comma pauses on both sides, since
- * a block equation is a beat in the sentence rather than a word in it.
+ * Inline math gets spaces; display math gets comma pauses on both sides.
  */
 function joinSegments(segments) {
   let out = ''

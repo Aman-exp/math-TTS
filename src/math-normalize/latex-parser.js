@@ -1,12 +1,10 @@
 /**
  * LaTeX math -> AST.
  *
- * Deliberately a *math-mode* parser, not a LaTeX implementation: no macro
- * definitions, no environments beyond matrices/cases, no error recovery beyond
- * "emit what you understood and keep going". The parser's contract is that it
- * never throws on garbage input — unparseable pieces come back as
- * `{type:'unknown'}` nodes so the speech layer can read them literally rather
- * than dropping them silently.
+ * A math-mode parser, not a full LaTeX implementation: no macros, no
+ * environments beyond matrices/cases. Never throws on garbage input —
+ * unparseable pieces come back as `{type:'unknown'}` nodes instead of being
+ * dropped.
  */
 
 const SINGLE_CHAR_OPS = new Set(['+', '-', '*', '/', '=', '<', '>', ',', ';', '!', ':', '|'])
@@ -66,9 +64,8 @@ export function tokenize(src) {
         tokens.push({ type: 'command', value: name })
         i += 1 + name.length
 
-        // \text{...} holds prose, where spaces carry meaning. Capture the
-        // braced argument verbatim instead of letting the math tokenizer
-        // discard its whitespace and spell out its letters.
+        // \text{...} holds prose: capture it verbatim instead of tokenizing
+        // as math, which would discard whitespace and spell out letters.
         if (VERBATIM_COMMANDS.has(name)) {
           const braced = readBracedRaw(src, i)
           if (braced) {
@@ -151,8 +148,7 @@ export function parseLatex(src) {
    *
    * @param {Set<string>} stopTypes
    * @param {Set<string>} stopCommands
-   * @param {boolean} [stopAtBar] Stop at a '|' op token — used for |x|, where
-   *   the closing bar is an operator token rather than a distinct close type.
+   * @param {boolean} [stopAtBar] Stop at a '|' op token, for |x|.
    */
   function parseSequence(stopTypes = new Set(), stopCommands = new Set(), stopAtBar = false) {
     const items = []
@@ -167,12 +163,7 @@ export function parseLatex(src) {
     return items.length === 1 ? items[0] : { type: 'seq', items }
   }
 
-  /**
-   * Parse one atom, then attach any sub/superscripts.
-   *
-   * Both orders (x_i^2 and x^2_i) mean the same thing, and either may repeat,
-   * so this loops rather than checking once.
-   */
+  /** Parse one atom, then attach any sub/superscripts (x_i^2 or x^2_i, either order, possibly both). */
   function parseAtomWithScripts() {
     let base = parseAtom()
     if (!base) return null
@@ -211,9 +202,8 @@ export function parseLatex(src) {
         return { type: 'ident', name: token.value }
 
       case 'op': {
-        // A bar pairs with a later bar to form absolute value. If there is no
-        // partner, it stays an operator — "P(A|B)" is "given", not a stray
-        // delimiter, and guessing wrong there is worse than not guessing.
+        // A bar pairs with a later bar to form absolute value; with no
+        // partner it stays an operator ("P(A|B)" is "given").
         if (token.value === '|' && hasLaterBar()) {
           const body = parseSequence(new Set(['rbrace']), new Set(), true)
           if (!atEnd() && peek().type === 'op' && peek().value === '|') next()
@@ -229,8 +219,6 @@ export function parseLatex(src) {
         return { type: 'char', value: token.value }
 
       case 'open': {
-        // Read to the matching close so the speech layer can decide whether
-        // this is a function argument (say "of x") or a real grouping.
         const body = parseSequence(new Set(['close', 'rbrace']))
         let closer = ')'
         if (!atEnd() && peek().type === 'close') closer = next().value
@@ -243,8 +231,7 @@ export function parseLatex(src) {
 
       case 'sub':
       case 'sup':
-        // Script with no base, e.g. "^2" at the start. Treat the script as an
-        // atom attached to nothing; the renderer says "to the power of two".
+        // Script with no base, e.g. "^2" at the start.
         return { type: token.type, base: { type: 'empty' }, [token.type === 'sub' ? 'sub' : 'sup']: parseAtom() }
 
       case 'amp':
@@ -363,8 +350,7 @@ export function parseLatex(src) {
     const nameNode = requireArg()
     const envName = flattenToString(nameNode)
 
-    // Column alignment spec for array/tabular — consumed and discarded, since
-    // alignment carries no meaning aloud.
+    // Column alignment spec for array/tabular carries no meaning aloud.
     if (envName === 'array' || envName === 'tabular') requireArg()
 
     const rows = [[]]

@@ -1,10 +1,7 @@
 /**
- * Shared spoken-form vocabulary.
- *
- * Phase 1 (LaTeX) and Phase 2 (loose Unicode) both need the same answer to
- * "what do you call this symbol out loud", so the tables live here and neither
- * phase owns them. Every entry maps to lowercase spoken English with no
- * punctuation — callers add the surrounding commas and pauses.
+ * Shared spoken-form vocabulary, used by both the LaTeX and loose-Unicode
+ * paths. Every entry maps to lowercase spoken English with no punctuation —
+ * callers add the surrounding commas and pauses.
  */
 
 /** LaTeX command name -> spoken form. Greek letters. */
@@ -50,7 +47,7 @@ export const GREEK = {
   Omega: 'capital omega',
 }
 
-/** Unicode Greek codepoint -> spoken form. Phase 2 leans on this too. */
+/** Unicode Greek codepoint -> spoken form. */
 export const GREEK_UNICODE = {
   α: 'alpha', β: 'beta', γ: 'gamma', Γ: 'capital gamma',
   δ: 'delta', Δ: 'capital delta', ε: 'epsilon', ϵ: 'epsilon',
@@ -64,12 +61,7 @@ export const GREEK_UNICODE = {
   χ: 'chi', ψ: 'psi', Ψ: 'capital psi', ω: 'omega', Ω: 'capital omega',
 }
 
-/**
- * Binary operators and relations.
- *
- * Spoken with spaces around them by the renderer, so "a+b" becomes
- * "a plus b" rather than "aplusb".
- */
+/** Binary operators and relations. Renderer adds spaces: "a+b" -> "a plus b". */
 export const OPERATORS = {
   '+': 'plus',
   '-': 'minus',
@@ -82,7 +74,7 @@ export const OPERATORS = {
   ';': ';',
   '!': 'factorial',
   ':': 'colon',
-  '|': 'given', // conditional probability reading; see known-limitations
+  '|': 'given', // conditional probability reading
 }
 
 /** LaTeX command -> spoken form, for operators, relations, arrows, sets. */
@@ -101,7 +93,7 @@ export const COMMAND_SYMBOLS = {
   ll: 'is much less than', gg: 'is much greater than',
   prec: 'precedes', succ: 'succeeds',
   doteq: 'is defined as', triangleq: 'is defined as',
-  mid: 'given', // P(A \mid B) — conditional probability is the dominant use
+  mid: 'given', // P(A \mid B)
   colon: 'colon', vert: 'given',
 
   // set theory / logic
@@ -147,9 +139,8 @@ export const BLACKBOARD = {
 }
 
 /**
- * Named functions. Presence in this table is what licenses the "f of x"
- * reading instead of "f times x" — see FUNCTION_LETTERS for the heuristic
- * that extends it to single letters.
+ * Named functions. Presence here licenses "f of x" instead of "f times x" —
+ * see FUNCTION_LETTERS for the single-letter heuristic.
  */
 export const FUNCTIONS = new Set([
   'sin', 'cos', 'tan', 'cot', 'sec', 'csc',
@@ -176,11 +167,8 @@ export const BIG_OPERATORS = {
 
 /**
  * Single letters that read as functions when applied to a parenthesized
- * argument. Everything outside this set reads as multiplication, because
- * "a(b+c)" is far more often a product than an application.
- *
- * This is a heuristic and will occasionally be wrong in both directions;
- * that tradeoff is documented in the README.
+ * argument. Everything else reads as multiplication ("a(b+c)" is usually a
+ * product). Heuristic — will occasionally be wrong in both directions.
  */
 export const FUNCTION_LETTERS = new Set([
   'f', 'g', 'h', 'F', 'G', 'H', 'p', 'q', 'P', 'Q', 'u', 'v', 'w', 'T',
@@ -199,10 +187,7 @@ export const ACCENTS = {
 
 /**
  * Symbols outside the core math vocabulary that still have an obvious name.
- *
- * Kokoro tends to render an unknown codepoint as silence, which is the one
- * outcome we refuse: a listener who hears nothing has no idea anything was
- * there. Naming the symbol is always better than dropping it.
+ * Kokoro renders unknown codepoints as silence, so naming them beats dropping them.
  */
 export const NAMED_SYMBOLS = {
   '†': 'dagger', '‡': 'double dagger', '§': 'section', '¶': 'paragraph',
@@ -228,11 +213,8 @@ export const NAMED_SYMBOLS = {
 }
 
 /**
- * Unicode blocks that are unambiguously mathematical.
- *
- * A character in one of these that we have no name for is still definitely
- * notation, so it earns a spoken placeholder rather than silence. Ordinary text,
- * punctuation, CJK and emoji all fall outside these ranges and are left alone.
+ * Unicode blocks that are unambiguously mathematical. An unnamed character in
+ * one of these still gets a spoken placeholder rather than silence.
  */
 const MATH_BLOCKS = [
   [0x2190, 0x21ff], // Arrows
@@ -271,12 +253,7 @@ export const SUBSCRIPT_CHARS = {
   'ᵢ': 'i', 'ⱼ': 'j',
 }
 
-/**
- * Spoken form for a plain number.
- *
- * Single digits become words; longer numerals pass through, since TTS reads
- * "1024" correctly and spelling it out ourselves would only add bugs.
- */
+/** Single digits become words; longer numerals pass through (TTS reads "1024" fine already). */
 export function speakNumber(text) {
   if (text.length === 1 && DIGIT_WORDS[text]) return DIGIT_WORDS[text]
   return text

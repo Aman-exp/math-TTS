@@ -1,25 +1,16 @@
 /**
- * Loose Unicode math -> spoken English.
+ * Loose Unicode math -> spoken English: math typed straight into prose with
+ * no delimiters ("∫₀^∞ φ(u)du", "x² + y² = z²", "σ² ≤ 3"). Heuristic by
+ * nature, so the goal is to be safe by default.
  *
- * This is the heuristic half of the project: math typed straight into prose with
- * no delimiters to mark it ("∫₀^∞ φ(u)du", "x² + y² = z²", "σ² ≤ 3"). There is
- * no way to be right every time, so the design goal is to be *safe by default*
- * and extensible where it is wrong.
+ * A run is transliterated to LaTeX and rendered through the same parser and
+ * speech renderer as delimited math, so there's one set of reading rules to
+ * maintain rather than two that drift apart.
  *
- * Two decisions carry the whole module:
- *
- * 1. **Transliterate to LaTeX, then reuse Phase 1.** A Unicode run becomes a
- *    LaTeX string and goes through the existing parser and speech renderer.
- *    Big-operator scope, differentials, function application and fraction
- *    bracketing all come along for free, and there is exactly one set of
- *    reading rules to maintain rather than two that drift apart.
- *
- * 2. **A run must be anchored by a strong trigger.** Only a Greek letter, a
- *    math symbol, or a Unicode super/subscript can *start* a run. Digits,
- *    single letters and ASCII operators may only *join* one already anchored.
- *    This is what keeps "well-known" from becoming "well minus known" and
- *    "(see below)" from becoming "open paren see below close paren" — with no
- *    strong trigger present, the text is not touched at all.
+ * A run must be anchored by a strong trigger: only a Greek letter, math
+ * symbol, or Unicode super/subscript can start one. Digits, single letters
+ * and ASCII operators may only join a run already anchored — otherwise
+ * "well-known" would become "well minus known".
  */
 
 import {
@@ -47,9 +38,8 @@ const GREEK_LATEX = {
 }
 
 /**
- * Capital sigma and pi are ambiguous: the same codepoint serves as a Greek
- * letter and as a summation/product sign. Limits are the tell — "Σᵢ₌₁ⁿ" and
- * "Σ_{i=1}" are operators, a bare "Σ" is a letter.
+ * Capital sigma and pi double as Greek letters and summation/product signs.
+ * Limits are the tell — "Σᵢ₌₁ⁿ" is an operator, a bare "Σ" is a letter.
  */
 const AMBIGUOUS_BIG_OPS = {
   Σ: '\\sum',
@@ -59,10 +49,8 @@ const AMBIGUOUS_BIG_OPS = {
 /**
  * Combining diacritics -> LaTeX accents.
  *
- * "θ̂" is two codepoints (θ + U+0302), so a naive char walk emits the base and
- * then the bare mark, which renders as mojibake and — worse — desynchronizes
- * paren matching for anything downstream. These are rewritten to real accent
- * commands before the main walk.
+ * "θ̂" is two codepoints (θ + U+0302); a naive char walk would emit the base
+ * and a bare mark. Rewritten to real accent commands before the main walk.
  */
 const COMBINING_ACCENTS = {
   '̀': 'grave',
@@ -139,11 +127,8 @@ const MATH_LATEX = {
 }
 
 /**
- * Characters that can anchor a math run.
- *
- * Note what is deliberately absent: ASCII digits, letters, and operators.
- * Those are common in ordinary prose, so letting them anchor a run is what
- * would turn "well-known" into "well minus known".
+ * Characters that can anchor a math run. ASCII digits, letters, and
+ * operators are deliberately absent — too common in ordinary prose.
  */
 const STRONG_CHARS = new Set([
   ...Object.keys(GREEK_LATEX),
@@ -177,7 +162,6 @@ export function hasUnicodeMath(text) {
 
 /**
  * Rewrite a Unicode math run as LaTeX.
- *
  * @param {string} src
  * @returns {string}
  */
@@ -259,10 +243,8 @@ function takesLimits(src, from) {
 }
 
 /**
- * Read the operand following a root sign.
- *
- * "√(x+y)" takes the whole parenthesized group; "√2" and "√x²" take a single
- * atom, because "√2 + 1" means the root of 2 plus 1, not the root of 3.
+ * Read the operand following a root sign: "√(x+y)" takes the whole
+ * parenthesized group, "√2" takes a single atom ("√2 + 1" is root-of-2 plus 1).
  */
 function readAtom(src, from) {
   let i = from
@@ -375,9 +357,8 @@ function joinable(token, acrossSpace) {
     case 'bracket':
       return true
     case 'word':
-      // Function names join even across a space ("sin θ"). Differentials only
-      // join when glued on ("φ(u)du"), since a free-standing "du" in prose is
-      // more likely to be a word than a differential.
+      // Function names join even across a space ("sin θ"); differentials only
+      // join when glued on ("φ(u)du") — a free-standing "du" reads as a word.
       if (FUNCTIONS.has(token.text)) return true
       return !acrossSpace && DIFFERENTIAL.test(token.text)
     default:
@@ -433,8 +414,7 @@ export function findMathRuns(text) {
 
     const run = { start: tokens[left].start, end: tokens[right].end }
     const last = runs[runs.length - 1]
-    // Two triggers in one expression produce overlapping runs — merge them
-    // rather than translating the same span twice.
+    // Two triggers in one expression can produce overlapping runs — merge them.
     if (last && run.start <= last.end) last.end = Math.max(last.end, run.end)
     else runs.push(run)
 
@@ -453,12 +433,9 @@ export function findMathRuns(text) {
 export function normalizeUnicodeMath(input) {
   if (!input) return input
 
-  // Fold first, unconditionally: PDF-pasted prose is full of styled letters, and
-  // turning "𝑥" into "x" is an improvement even when no math run forms around it.
+  // Fold unconditionally: turning "𝑥" into "x" helps even with no math run around it.
   const text = foldStyledMath(input, FOLD_EXCEPTIONS)
 
-  // Even with no math run to translate, stray symbols still need naming — an
-  // unmapped operator sitting alone in a sentence would otherwise be silence.
   if (!hasUnicodeMath(text)) return nameStraySymbols(text)
 
   const runs = findMathRuns(text)
@@ -470,14 +447,11 @@ export function normalizeUnicodeMath(input) {
   for (const run of runs) {
     out += text.slice(cursor, run.start)
     const source = text.slice(run.start, run.end)
-    // If a run somehow renders to nothing, keep the original characters rather
-    // than silently deleting content the user typed.
+    // If a run renders to nothing, keep the original characters.
     const speech = latexToSpeech(transliterate(source)) || source
 
-    // A run can sit flush against a word that did not join it ("AB²", where the
-    // multi-letter "AB" is not allowed into the run). Splicing the speech in
-    // directly would produce "ABsquared" — one nonsense word to the voice — so
-    // a boundary space is required whenever both sides are word characters.
+    // A run can sit flush against a word that didn't join it ("AB²" — "AB"
+    // stays out). Force a boundary space so it doesn't read as "ABsquared".
     if (/\w$/.test(out) && /^\w/.test(speech)) out += ' '
     out += speech
     cursor = run.end
@@ -490,16 +464,9 @@ export function normalizeUnicodeMath(input) {
 }
 
 /**
- * Give a spoken name to math symbols left sitting in prose.
- *
- * These are characters that never anchored a run — either because we have no
- * LaTeX mapping for them ("⨁") or because they sat alone in a sentence. Kokoro
- * renders an unknown codepoint as silence, so without this the listener is told
- * nothing was there.
- *
- * Scoped to Unicode math blocks on purpose: typography (em dashes, curly
- * quotes), CJK and emoji are left untouched, since the voice already handles
- * them and rewriting them would change ordinary prose.
+ * Give a spoken name to math symbols left sitting in prose — ones with no
+ * LaTeX mapping ("⨁") or that sat alone in a sentence. Scoped to Unicode math
+ * blocks so ordinary typography (em dashes, curly quotes), CJK and emoji stay untouched.
  */
 function nameStraySymbols(text) {
   let out = ''

@@ -1,10 +1,6 @@
 /**
- * Thin wrapper over KokoroTTS.generate().
- *
- * Deliberately narrow: it takes text that is already spoken-English (the math
- * normalizer's job, Phase 1+) and returns a playable object URL. Keeping the
- * generation call free of any math awareness is what lets the normalizer be
- * tested without loading an 82M-parameter model.
+ * Thin wrapper over KokoroTTS.generate(). Takes already-normalized spoken-English
+ * text (see ../math-normalize) and returns a playable object URL.
  */
 
 import { loadTTS } from './kokoro-loader.js'
@@ -20,8 +16,8 @@ let currentUrl = null
  * @param {string} text Text to speak, already normalized to spoken English.
  * @param {object} [options]
  * @param {string} [options.voice]
- * @param {number} [options.speed] Generation-time pace. Leave at 1 — live speed
- *   changes belong to the player's playbackRate, not to re-synthesis.
+ * @param {number} [options.speed] Generation-time pace; leave at 1 and use the
+ *   player's playbackRate for live speed changes.
  * @param {(info: object) => void} [options.onProgress] Model-download progress.
  * @returns {Promise<{url: string, blob: Blob, device: string}>}
  */
@@ -47,24 +43,14 @@ export function revokeCurrent() {
   }
 }
 
-/**
- * Text long enough that waiting for full synthesis is worse than sentence gaps.
- *
- * Below this, a single generate() finishes fast enough that streaming would add
- * audible seams for no benefit. Above it, WASM synthesis of the whole document
- * can take tens of seconds before the first sound, which reads as a hang.
- */
+// Above this length, single-shot WASM synthesis can take tens of seconds before
+// any sound plays; below it streaming would just add seams for no benefit.
 export const STREAM_THRESHOLD = 280
 
 /**
- * Synthesize in sentence-sized chunks, yielding each as soon as it is ready.
- *
- * Playback of chunk 1 overlaps synthesis of chunk 2, so time-to-first-audio
- * stops depending on document length. The chunks are separate clips rather than
- * one appended stream: keeping them as ordinary `<audio>` sources is what
- * preserves the `playbackRate` speed slider, which is a non-negotiable of the
- * design. Kokoro splits on sentence boundaries, so the seam lands where a
- * reader would pause anyway.
+ * Synthesizes in sentence-sized chunks, yielding each as soon as it's ready so
+ * chunk 1 can play while chunk 2 is still generating. Chunks stay as separate
+ * clips (rather than one appended stream) so playbackRate still applies.
  *
  * @param {string} text
  * @param {object} [options]
@@ -85,8 +71,7 @@ export async function* speakStream(
   let index = 0
 
   for await (const chunk of tts.stream(trimmed, { voice, speed })) {
-    // Checked after each chunk rather than mid-inference: kokoro-js has no
-    // cancellation hook, so the best we can do is stop requesting more.
+    // kokoro-js has no cancellation hook, so we can only stop requesting more chunks
     if (signal?.aborted) return
 
     const url = URL.createObjectURL(chunk.audio.toBlob())

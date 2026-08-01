@@ -1,15 +1,10 @@
 /**
  * AST -> spoken English, in the spirit of ClearSpeak.
  *
- * Two rules drive most of the decisions here:
- *
- * 1. Say the least that is still unambiguous. "x squared" beats "x to the
- *    power of two"; a fraction of two atoms is "a over b" with no bracketing
- *    words, while a nested one gets explicit "the fraction … end fraction"
- *    scaffolding so the listener can hear where it ends.
- * 2. Never drop anything. An unrecognized command reads as its own name rather
- *    than vanishing — a listener who hears "backslash foo" knows something was
- *    there, whereas silence is a lie.
+ * Say the least that is still unambiguous ("x squared", not "x to the power
+ * of two"; nested fractions get "the fraction … end fraction" scaffolding so
+ * the listener can hear where they end). Never drop anything — an
+ * unrecognized command reads as its own name rather than vanishing.
  */
 
 import {
@@ -118,9 +113,8 @@ function renderNode(node) {
 }
 
 /**
- * Render a run of sibling nodes, applying the context-sensitive rules that
- * only make sense between neighbours: function application, implied
- * multiplication, and the rightward scope of big operators.
+ * Render a run of sibling nodes, handling rules that depend on neighbours:
+ * function application, implied multiplication, big-operator scope.
  */
 function renderSequence(items) {
   if (!items?.length) return ''
@@ -130,7 +124,7 @@ function renderSequence(items) {
     const node = items[i]
 
     // A big operator's scope runs to the end of the enclosing sequence:
-    // \int_0^1 f(x) dx  ->  "the integral from 0 to 1 of f of x, d x"
+    // \int_0^1 f(x) dx -> "the integral from 0 to 1 of f of x, d x"
     const bigOp = asBigOperator(node)
     if (bigOp) {
       parts.push(renderBigOperator(bigOp, items.slice(i + 1)))
@@ -139,7 +133,7 @@ function renderSequence(items) {
 
     const nextNode = items[i + 1]
 
-    // Accents read postfix: \hat{x} is "x hat", which is how a person says it.
+    // Accents read postfix: \hat{x} is "x hat".
     if (node.type === 'command' && ACCENTS[node.name] && nextNode) {
       parts.push(`${renderNode(nextNode)} ${ACCENTS[node.name]}`)
       i++
@@ -147,9 +141,7 @@ function renderSequence(items) {
     }
 
     // Function application: a name (or function-ish letter) followed by a
-    // parenthesized group reads "of", everything else reads "times".
-    // Brackets count too, because expectation is conventionally written
-    // E[X] rather than E(X).
+    // parenthesized group reads "of". Brackets count too (E[X] is expectation).
     const applied = nextNode?.type === 'delim' && (nextNode.open === '(' || nextNode.open === '[')
     if (applied && isFunctionLike(node)) {
       parts.push(`${renderNode(node)} of ${renderNode(nextNode.body)}`)
@@ -157,9 +149,9 @@ function renderSequence(items) {
       continue
     }
 
-    // A *named* function applied without parentheses: "sin θ" is "sin of theta".
-    // Restricted to the named-function table on purpose — "sin x" has only one
-    // reading, whereas "f x" is genuinely ambiguous and stays juxtaposed.
+    // A named function applied without parens: "sin θ" -> "sin of theta".
+    // Restricted to the named-function table — "f x" stays juxtaposed since
+    // it's genuinely ambiguous.
     if (node.type === 'command' && FUNCTIONS.has(node.name) && nextNode && isAtomic(nextNode)) {
       parts.push(`${renderCommand(node.name)} of ${renderNode(nextNode)}`)
       i++
@@ -210,8 +202,7 @@ function renderBigOperator({ op, from, to }, rest) {
   if (bodyText) pieces.push(`of ${bodyText}`)
 
   let text = pieces.join(' ')
-  // The differential gets its own comma-separated tail so "…of phi of u, d u"
-  // has an audible break before it, the way a person reading aloud would pause.
+  // Comma before the differential gives an audible pause: "…of phi of u, d u"
   if (differential) text += `, ${differential}`
   return text
 }
@@ -245,11 +236,11 @@ function isFunctionLike(node) {
     return FUNCTIONS.has(node.name) || FUNCTION_LETTERS.has(node.name)
   }
   if (node?.type === 'ident') return FUNCTION_LETTERS.has(node.name)
-  // \mathbb{E}[X], \mathbb{P}(A): operators dressed as blackboard-bold letters.
+  // \mathbb{E}[X], \mathbb{P}(A)
   if (node?.type === 'styled' && node.style === 'mathbb') {
     return ['E', 'P'].includes(flattenToString(node.body))
   }
-  // f_1(x), \phi_n(u): the subscript does not change whether the base is a function
+  // f_1(x): a subscript doesn't change whether the base is a function
   if (['sub', 'sup', 'subsup'].includes(node?.type)) return isFunctionLike(node.base)
   return false
 }
@@ -261,7 +252,6 @@ function renderFraction(node) {
   const named = NAMED_FRACTIONS[`${flattenToString(node.num)}/${flattenToString(node.den)}`]
   if (named) return named
 
-  // Atomic over atomic is short enough that "a over b" cannot be misheard.
   if (isAtomic(node.num) && isAtomic(node.den)) return `${numText} over ${denText}`
 
   return `the fraction ${numText} over ${denText}, end fraction`
@@ -295,8 +285,6 @@ function renderSuperscriptTail(sup) {
   if (flat === '*') return 'star'
 
   const text = renderNode(sup)
-  // Negative exponents read "to the power of minus 2", which is clearer aloud
-  // than "to the negative second power".
   return `to the power of ${text}`
 }
 
@@ -324,8 +312,7 @@ function renderDelimited(node) {
     case '\\|':
       return `the norm of ${inner}`
     default:
-      // A single atom in parentheses needs no spoken parens at all —
-      // "(x)" is just "x" to a listener.
+      // "(x)" is just "x" to a listener — no spoken parens needed.
       if (isAtomic(node.body)) return inner
       return `open paren ${inner} close paren`
   }
@@ -372,8 +359,8 @@ function renderCommand(name) {
   if (name === '$') return 'dollar'
   if (ACCENTS[name]) return ACCENTS[name]
 
-  // Unrecognized: read the name so the listener knows something was there.
-  // Splitting camelCase keeps "\mathScr" from being read as one nonsense word.
+  // Unrecognized: read the name. Split camelCase so it doesn't come out as
+  // one nonsense word.
   return name.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase()
 }
 
@@ -381,9 +368,7 @@ function renderChar(ch) {
   if (GREEK_UNICODE[ch]) return GREEK_UNICODE[ch]
   if (OPERATORS[ch]) return OPERATORS[ch]
   if (NAMED_SYMBOLS[ch]) return NAMED_SYMBOLS[ch]
-  // A symbol from a math block with no name of its own: say that something was
-  // there. Kokoro would otherwise render it as silence, which reads to the
-  // listener as "nothing was written here" — the one failure mode we refuse.
+  // Kokoro renders unmapped codepoints as silence; say "symbol" instead of dropping it.
   if (isUnnamedMathSymbol(ch)) return 'symbol'
   return ch
 }
@@ -428,9 +413,7 @@ function isAtomic(node) {
     case 'styled':
     case 'text':
       return true
-    // "x squared over y" needs no bracketing — a decorated atom is still short
-    // enough to hear as one unit. Only genuinely branching nodes (fractions,
-    // roots, sums) get "end fraction"-style scaffolding.
+    // A decorated atom ("x squared") is still short enough to hear as one unit.
     case 'sup':
     case 'sub':
     case 'subsup':

@@ -28,8 +28,6 @@ describe('normalize — loose Unicode corpus', () => {
 })
 
 describe('normalize — prose that must not be touched', () => {
-  // A heuristic detector earns its keep by what it leaves alone. Mangling
-  // ordinary prose is a worse failure than missing a math reading.
   for (const { name, input } of UNTOUCHED_CASES) {
     it(name, () => {
       expect(normalize(input)).toBe(input)
@@ -45,7 +43,6 @@ describe('normalize — prose that must not be touched', () => {
 
 describe('unicode/LaTeX interaction', () => {
   it('leaves unicode inside a LaTeX span to the LaTeX path', () => {
-    // Delimited math must not be double-processed.
     expect(normalize('$x^2$ and y²')).toBe('x squared and y squared')
   })
 
@@ -59,9 +56,6 @@ describe('unicode/LaTeX interaction', () => {
 })
 
 describe('styled-unicode folding (PDF paste)', () => {
-  // Copying math out of a PDF yields U+1D400-block codepoints, not ASCII.
-  // Without folding, none of the symbol tables match and the text is either
-  // spelled out letter-by-letter or dropped.
   const cases = [
     { name: 'italic latin letters', input: '\u{1D465}²', expected: 'x squared' },
     { name: 'italic greek', input: 'The variance \u{1D70E}²', expected: 'The variance sigma squared' },
@@ -79,7 +73,6 @@ describe('styled-unicode folding (PDF paste)', () => {
   }
 
   it('keeps expectation notation rather than folding it to a bare E', () => {
-    // U+1D53C has a dedicated spoken form, so it must survive style folding.
     expect(normalize('\u{1D53C}[\u{1D44B}]')).toBe('the expectation of X')
   })
 
@@ -89,9 +82,6 @@ describe('styled-unicode folding (PDF paste)', () => {
 })
 
 describe('unrecognized symbol fallback', () => {
-  // BUILD.md: an unknown symbol must be read, not silently dropped. Kokoro
-  // renders an unmapped codepoint as silence, which tells the listener nothing
-  // was there.
   it('names a known-but-uncommon symbol', () => {
     expect(normalize('We have ⊨ semantics.')).toContain('models')
   })
@@ -101,8 +91,6 @@ describe('unrecognized symbol fallback', () => {
   })
 
   it('leaves ordinary typography alone', () => {
-    // Em dashes and curly quotes are handled fine by the voice; rewriting them
-    // would change ordinary prose for no gain.
     const prose = 'Run it — it “just works” today.'
     expect(normalize(prose)).toBe(prose)
   })
@@ -147,9 +135,6 @@ describe('detectSegments', () => {
 })
 
 describe('robustness', () => {
-  // The normalizer sits between the user's clipboard and the TTS engine, so a
-  // throw here means the app appears broken on ordinary input. Nothing it can
-  // be handed may raise.
   const nasty = [
     '',
     '$',
@@ -203,8 +188,6 @@ describe('parseLatex', () => {
 
 describe('latexToSpeech', () => {
   it('speaks nested fractions with audible bracketing', () => {
-    // Without "end fraction" a listener cannot tell where the inner fraction
-    // stops and the outer denominator begins.
     expect(latexToSpeech('\\frac{\\frac{a}{b}}{c}')).toBe(
       'the fraction a over b over c, end fraction'
     )

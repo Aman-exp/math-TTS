@@ -1,10 +1,8 @@
 /**
  * Split mixed prose/math text into segments.
  *
- * Phase 1 only recognizes explicitly delimited LaTeX. Phase 2 will add
- * loose-Unicode detection for the `text` segments this produces, which is why
- * the return shape is a segment list rather than a string — the pipeline stays
- * the same and Phase 2 slots in as another pass over the prose runs.
+ * Returns a segment list rather than a string so later passes can process
+ * `text` segments (loose Unicode math) without re-scanning delimited math.
  */
 
 /**
@@ -56,8 +54,7 @@ export function detectSegments(input) {
       const closeIndex = findClose(input, contentStart, delim.close)
 
       if (closeIndex === -1) {
-        // Unterminated delimiter: treat it as literal text rather than
-        // swallowing the rest of the document into a math span.
+        // Unterminated delimiter: treat as literal text.
         buffer += input.slice(i, i + delim.open.length)
         i += delim.open.length
         continue
@@ -110,20 +107,11 @@ function findClose(input, from, close) {
 }
 
 /**
- * Decide whether a single-dollar span is inline math or two currency amounts.
- *
- * This is the KaTeX auto-render rule, and it is the right one: inspecting the
- * *contents* for math-like characters fails on the common case, because in
- * "it costs $5 and $10 more" the text captured between the two dollar signs is
- * "5 and " — which contains letters and therefore looks like math to any
- * content-based test. What actually distinguishes the two is the whitespace at
- * the delimiters:
- *
- *   - real math never has a space just inside its delimiters ("$x + 1$")
- *   - a currency pair almost always does ("$5 and $10")
- *
- * A digit immediately after the closing dollar is the other tell ("$5 to $10x"
- * is not math).
+ * Decide whether a single-dollar span is inline math or two currency amounts
+ * (the KaTeX auto-render rule). Real math never has whitespace just inside
+ * its delimiters ("$x + 1$"); a currency pair almost always does
+ * ("$5 and $10"). A digit right after the closing dollar is the other tell
+ * ("$5 to $10x" is not math).
  *
  * @param {string} content Text between the dollars.
  * @param {string} input Full input, for lookahead.

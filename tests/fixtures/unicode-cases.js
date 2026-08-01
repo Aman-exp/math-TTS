@@ -1,16 +1,13 @@
 /**
- * Phase 2 corpus: loose Unicode math typed straight into prose.
+ * Loose Unicode math test corpus.
  *
- * The UNTOUCHED block is the important half. A heuristic detector earns trust by
- * what it leaves alone, and every entry there is a plausible sentence that a
- * careless trigger rule would mangle. Regressions in that block are worse than
- * a missed reading in the block above it: mangling ordinary prose makes the app
- * useless for its main job, whereas a missed math reading only makes it
- * incomplete.
+ * UNTOUCHED_CASES is the important half: each entry is a plausible sentence
+ * that a careless trigger rule would mangle. A regression there is worse
+ * than a missed reading above it.
  */
 
 export const UNICODE_CASES = [
-  // --- the canonical BUILD.md example, with no LaTeX delimiters -----------
+  // --- the canonical example, with no LaTeX delimiters ---------------------
   {
     name: 'dispersion-index integral in loose unicode',
     input: '∫₀^∞ φ(u)du',
@@ -126,10 +123,9 @@ export const UNICODE_CASES = [
 ]
 
 /**
- * Prose that must survive untouched.
- *
- * Each of these breaks under a naive rule — hyphens as minus signs, parentheses
- * as spoken delimiters, digits anchoring a run on their own.
+ * Prose that must survive untouched. Each entry breaks under a naive rule —
+ * hyphens as minus signs, parentheses as spoken delimiters, digits anchoring
+ * a run on their own.
  */
 export const UNTOUCHED_CASES = [
   { name: 'hyphenated word', input: 'This is a well-known result.' },

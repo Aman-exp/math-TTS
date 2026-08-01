@@ -1,32 +1,25 @@
 /**
  * Fold Unicode Mathematical Alphanumeric Symbols to their base letters.
  *
- * Why this exists: text copied out of a PDF or Word equation does not contain
- * ASCII letters. It contains U+1D400-block codepoints — "𝑥" is MATHEMATICAL
- * ITALIC SMALL X (U+1D465), not "x", and "𝜎" is MATHEMATICAL ITALIC SMALL SIGMA
- * (U+1D70E), not "σ". This is the single most common way real loose-Unicode math
- * reaches the app, and without folding, none of the symbol tables match: the
- * text would be read letter-by-letter or silently dropped.
+ * Text copied out of a PDF or Word equation uses U+1D400-block codepoints
+ * instead of ASCII — "𝑥" is MATHEMATICAL ITALIC SMALL X (U+1D465), not "x".
+ * Without folding, none of the symbol tables match and the text gets read
+ * letter-by-letter or dropped.
  *
- * Folding is lossy by design. Style (bold/italic/script/fraktur) carries meaning
- * in some papers, but saying "bold italic script x" aloud for every variable is
- * far worse than losing the distinction, so style is discarded and only the
- * identity of the letter is kept.
+ * Lossy by design: style (bold/italic/script/fraktur) is discarded, only
+ * letter identity is kept — saying "bold italic script x" aloud is worse
+ * than losing the distinction.
  *
- * These are astral codepoints (surrogate pairs in UTF-16), so callers that walk
- * strings by code *unit* cannot see them. Running this first means everything
- * downstream deals in BMP characters.
+ * These are astral codepoints (surrogate pairs in UTF-16); run this first so
+ * everything downstream deals in BMP characters.
  */
 
 /**
  * Contiguous 26-letter ranges in the Mathematical Alphanumeric Symbols block.
- * Each entry is [firstCodePoint, baseLetter].
- *
- * Several ranges have holes where the character was already encoded in the
- * Letterlike Symbols block (e.g. U+1D455 is reserved because "ℎ" is U+210E).
- * The holes are unassigned codepoints that never occur in real text, so the
- * naive offset arithmetic is safe — the real characters are handled by
- * LETTERLIKE below.
+ * Each entry is [firstCodePoint, baseLetter]. Some ranges have holes where a
+ * letter is already encoded in the Letterlike Symbols block instead (e.g.
+ * U+1D455 is unassigned because "ℎ" is U+210E) — those codepoints never
+ * occur in real text, so the offset arithmetic below is safe.
  */
 const LATIN_RANGES = [
   [0x1d400, 'A'], [0x1d41a, 'a'], // bold
@@ -47,11 +40,7 @@ const LATIN_RANGES = [
 /** Digit ranges: bold, double-struck, sans, sans-bold, monospace. */
 const DIGIT_RANGE_STARTS = [0x1d7ce, 0x1d7d8, 0x1d7e2, 0x1d7ec, 0x1d7f6]
 
-/**
- * Math Greek blocks. Every block has the identical 58-character layout, and the
- * blocks are exactly 58 codepoints apart, so one table and one offset handle all
- * five styles.
- */
+/** Math Greek blocks: identical 58-character layout, 58 codepoints apart. */
 const GREEK_BLOCK_STARTS = [
   0x1d6a8, // bold
   0x1d6e2, // italic
@@ -68,9 +57,8 @@ const GREEK_SEQUENCE =
 
 /**
  * Letterlike Symbols that are really styled letters.
- *
- * Deliberately absent: ℝ ℕ ℤ ℚ ℂ ℙ ℍ ℓ ℏ ℵ. Those carry meaning of their own
- * ("the real numbers", not "R"), and the symbol tables already handle them.
+ * Deliberately absent: ℝ ℕ ℤ ℚ ℂ ℙ ℍ ℓ ℏ ℵ — those carry their own meaning
+ * ("the real numbers") and are handled by the symbol tables instead.
  */
 const LETTERLIKE = {
   ℎ: 'h', ℬ: 'B', ℰ: 'E', ℱ: 'F', ℋ: 'H', ℐ: 'I', ℒ: 'L', ℳ: 'M',
@@ -82,9 +70,8 @@ const LETTERLIKE = {
  * Fold styled math characters to their base forms.
  *
  * @param {string} text
- * @param {Set<string>} [keep] Characters to leave alone even if they fall in a
- *   folded range — for symbols that already have a dedicated spoken form, such
- *   as "𝔼" for expectation.
+ * @param {Set<string>} [keep] Characters to leave alone even if they fall in
+ *   a folded range, e.g. "𝔼" which already has a dedicated spoken form.
  * @returns {string}
  */
 export function foldStyledMath(text, keep = new Set()) {
@@ -106,8 +93,7 @@ function foldChar(ch) {
   if (LETTERLIKE[ch]) return LETTERLIKE[ch]
 
   const cp = ch.codePointAt(0)
-  // Everything folded here lives above the BMP; skip the check entirely for
-  // ordinary text, which is the overwhelmingly common case.
+  // Everything folded here lives above the BMP; skip the check for ordinary text.
   if (cp < 0x1d400 || cp > 0x1d7ff) return ch
 
   for (const [start, base] of LATIN_RANGES) {
