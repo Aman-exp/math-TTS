@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MathSpeak — math-aware TTS, entirely in your browser</title>
+    <meta
+      name="description"
+      content="Paste text with math notation and hear it read aloud. Runs 100% client-side. No backend, no API keys, no cost."
+    />
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="app__header">
+        <h1>MathSpeak</h1>
+        <p class="tagline">
+          Math-aware text-to-speech that runs entirely in your browser.
+          No backend, no API keys, no cost.
+        </p>
+      </header>
+
+      <div id="firstVisitBanner" class="banner" hidden>
+        <p class="banner__text">
+          <strong>First time here:</strong> the speech model (~90&nbsp;MB) downloads
+          once to your browser and is cached for next time — no repeat download,
+          even offline after that.
+        </p>
+        <button id="firstVisitDismiss" class="banner__dismiss" type="button" aria-label="Dismiss">
+          &times;
+        </button>
+      </div>
+
+      <section class="panel">
+        <label class="label" for="input">Text to speak</label>
+        <textarea
+          id="input"
+          class="textarea"
+          rows="8"
+          spellcheck="false"
+          placeholder="Paste anything here. LaTeX math ($…$, $$…$$, \(…\), \[…\]) and loose Unicode math (∫₀^∞ φ(u)du) are both spoken as English."
+        >The dispersion index is $D = \frac{\sigma^2}{\mu}$, and ∫₀^∞ φ(u)du converges. For a Poisson process, σ²/μ = 1.</textarea>
+
+        <div id="preview" class="preview" hidden>
+          <span class="label label--inline">Will be spoken as</span>
+          <p id="previewText" class="preview__text"></p>
+        </div>
+
+        <div class="controls">
+          <button id="speak" class="btn btn--primary" type="button">Speak</button>
+          <button id="stop" class="btn" type="button" disabled>Stop</button>
+
+          <label class="label label--inline" for="voice">Voice</label>
+          <select id="voice" class="select" disabled>
+            <option>loading…</option>
+          </select>
+        </div>
+
+        <div class="controls controls--speed">
+          <label class="label label--inline" for="speed">
+            Speed <output id="speedValue" class="speed-value">1.00&times;</output>
+          </label>
+          <input
+            id="speed"
+            class="slider"
+            type="range"
+            min="0.5"
+            max="2"
+            step="0.05"
+            value="1"
+            aria-describedby="speedHelp"
+          />
+          <button id="speedReset" class="btn btn--ghost" type="button">Reset</button>
+        </div>
+        <p id="speedHelp" class="hint">
+          Drag at any time, including mid-playback — it takes effect instantly and
+          keeps the pitch unchanged. No re-synthesis.
+        </p>
+
+        <audio id="player" class="player" controls></audio>
+
+        <p id="status" class="status" role="status" aria-live="polite">
+          Idle.
+        </p>
+        <div class="progress" hidden>
+          <div id="progressBar" class="progress__bar"></div>
+        </div>
+      </section>
+
+      <footer class="app__footer">
+        <p>
+          Speech by
+          <a href="https://huggingface.co/hexgrad/Kokoro-82M" rel="noopener">Kokoro-82M</a>
+          via <a href="https://github.com/hexgrad/kokoro" rel="noopener">kokoro-js</a>
+          (Apache-2.0). The model downloads once, then is cached by your browser.
+        </p>
+      </footer>
+    </main>
+
+    <script type="module" src="./src/ui/app.js"></script>
+  </body>
+</html>

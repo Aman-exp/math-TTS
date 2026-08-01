@@ -1,0 +1,22 @@
+{
+  "name": "mathspeak",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Math-aware, fully client-side text-to-speech. No backend, no API keys.",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "kokoro-js": "^1.2.1"
+  },
+  "devDependencies": {
+    "vite": "^7.1.5",
+    "vitest": "^3.2.4"
+  }
+}
